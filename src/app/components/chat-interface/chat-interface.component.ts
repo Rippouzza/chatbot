@@ -55,6 +55,20 @@ export class ChatInterfaceComponent {
   async renderPlotly(id: number, plotlyCode: string) {
     const container = document.getElementById('plotly-container-' + id);
     if (plotlyCode && container) {
+      // Remove markdown code block fencing and language hints
+      plotlyCode = plotlyCode
+        .replace(/^```[a-zA-Z]*\s*/m, '')
+        .replace(/^(javascript|js)\s+/i, '')
+        .replace(/```$/gm, '')
+        .trim();
+  
+      // Remove any line that creates or appends a container
+      plotlyCode = plotlyCode
+        .replace(/var\s+container\s*=.*\n?/g, '')
+        .replace(/document\.body\.appendChild\(container\);?\n?/g, '');
+  
+      plotlyCode = plotlyCode.replace(/^\s*[\r\n]/gm, '');
+  
       const Plotly = (await import('plotly.js-dist-min')).default;
       // eslint-disable-next-line no-eval
       const plotlyFunc = new Function('Plotly', 'container', plotlyCode);
