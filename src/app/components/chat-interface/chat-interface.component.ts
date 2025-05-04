@@ -2,12 +2,14 @@ import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 interface Message {
   id?: number;
   sender: 'user' | 'bot';
-  content: string;
+  content: string | SafeHtml;
   type?: 'text' | 'visualization';
+  isHtml?: boolean;
 }
 
 @Component({
@@ -24,7 +26,7 @@ export class ChatInterfaceComponent {
   userInput: string = '';
   private messageIdCounter = 0;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private sanitizer: DomSanitizer) {}
 
   sendMessage() {
     if (!this.userInput.trim()) return;
@@ -42,7 +44,10 @@ export class ChatInterfaceComponent {
             setTimeout(() => this.renderPlotly(vizId!, response.plotly_code), 0);
           }
           const explanation = response?.explanation || 'No explanation provided.';
-          this.messages.push({ sender: 'bot', content: explanation, type: 'text' });
+          const explanationHtml = this.sanitizer.bypassSecurityTrustHtml(
+            explanation.replace(/\n/g, '<br>')
+          );
+          this.messages.push({ sender: 'bot', content: explanationHtml, type: 'text', isHtml: true });
         },
         error: () => {
           this.messages.push({ sender: 'bot', content: 'Error contacting backend.', type: 'text' });
@@ -61,14 +66,14 @@ export class ChatInterfaceComponent {
         .replace(/^(javascript|js)\s+/i, '')
         .replace(/```$/gm, '')
         .trim();
-  
+
       // Remove any line that creates or appends a container
       plotlyCode = plotlyCode
         .replace(/var\s+container\s*=.*\n?/g, '')
         .replace(/document\.body\.appendChild\(container\);?\n?/g, '');
-  
+
       plotlyCode = plotlyCode.replace(/^\s*[\r\n]/gm, '');
-  
+
       const Plotly = (await import('plotly.js-dist-min')).default;
       // eslint-disable-next-line no-eval
       const plotlyFunc = new Function('Plotly', 'container', plotlyCode);
